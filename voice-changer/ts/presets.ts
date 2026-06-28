@@ -64,8 +64,8 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
   },
   "female-18": {
     label: "Female 18",
-    hint: "Young woman",
-    config: voice({ pitch: 4, tone: { highpass: 140, lowpass: 0 } }),
+    hint: "Young woman, bright",
+    config: voice({ pitch: 6, tone: { highpass: 170, lowpass: 0 } }),
   },
   "female-25": {
     label: "Female 25",
@@ -74,13 +74,13 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
   },
   "female-30": {
     label: "Female 30",
-    hint: "Adult woman, a touch warmer",
-    config: voice({ pitch: 4, tone: { highpass: 130, lowpass: 14000 } }),
+    hint: "Adult woman, warmer",
+    config: voice({ pitch: 4, tone: { highpass: 120, lowpass: 13000 } }),
   },
   "female-35": {
     label: "Female 35",
-    hint: "Mature woman, warmer",
-    config: voice({ pitch: 3, tone: { highpass: 110, lowpass: 12000 } }),
+    hint: "Mature woman, full and warm",
+    config: voice({ pitch: 3, tone: { highpass: 100, lowpass: 11000 } }),
   },
   "old-lady": {
     label: "Old lady",
@@ -111,8 +111,8 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
   },
   "male-18": {
     label: "Male 18",
-    hint: "Young man",
-    config: voice({ pitch: -2, tone: { highpass: 0, lowpass: 9000 } }),
+    hint: "Young man, brighter",
+    config: voice({ pitch: -2, tone: { highpass: 0, lowpass: 9500 } }),
   },
   "male-25": {
     label: "Male 25",
@@ -121,13 +121,13 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
   },
   "male-30": {
     label: "Male 30",
-    hint: "Adult man, fuller",
-    config: voice({ pitch: -5, tone: { highpass: 0, lowpass: 7000 }, gain: 1.05 }),
+    hint: "Adult man, deep and full",
+    config: voice({ pitch: -6, tone: { highpass: 0, lowpass: 6800 }, gain: 1.05 }),
   },
   "male-35": {
     label: "Male 35",
-    hint: "Mature man, deeper",
-    config: voice({ pitch: -6, tone: { highpass: 0, lowpass: 6500 }, gain: 1.05 }),
+    hint: "Mature man, deepest",
+    config: voice({ pitch: -7, tone: { highpass: 0, lowpass: 6000 }, gain: 1.05 }),
   },
   "old-man": {
     label: "Old man",
@@ -140,16 +140,21 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
     }),
   },
 
-  // ---- Kids (gender-neutral) ------------------------------------------
+  // ---- Kids -----------------------------------------------------------
   "child-5": {
     label: "Kid (5)",
     hint: "Small child, very high",
     config: voice({ pitch: 12, tone: { highpass: 250, lowpass: 0 } }),
   },
-  "child-10": {
-    label: "Kid (10)",
-    hint: "Child, high",
-    config: voice({ pitch: 8, tone: { highpass: 200, lowpass: 0 } }),
+  "girl-10": {
+    label: "Girl (10)",
+    hint: "Young girl, high and bright",
+    config: voice({ pitch: 8, tone: { highpass: 220, lowpass: 0 } }),
+  },
+  "boy-10": {
+    label: "Boy (10)",
+    hint: "Young boy, high",
+    config: voice({ pitch: 6, tone: { highpass: 180, lowpass: 10000 } }),
   },
 
   // ---- Characters -----------------------------------------------------

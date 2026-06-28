@@ -57,9 +57,10 @@ export type VoicePresetName =
   | "male-30"
   | "male-35"
   | "old-man"
-  // kids (gender-neutral)
+  // kids
   | "child-5"
-  | "child-10"
+  | "girl-10"
+  | "boy-10"
   // characters
   | "robot"
   | "alien"
