@@ -1,0 +1,23 @@
+[package]
+name = "voip-dsp"
+version = "0.1.0"
+edition = "2021"
+description = "no_std WebAssembly DSP core for browser VoIP preprocessing"
+license = "MIT"
+
+[lib]
+# cdylib => a standalone .wasm that exports its own linear memory and the
+# `#[no_mangle] extern "C"` functions below. No wasm-bindgen / JS glue, so it can
+# be instantiated synchronously inside an AudioWorklet from raw bytes.
+crate-type = ["cdylib"]
+
+[dependencies]
+# Pure-Rust libm so we get sqrtf/cosf/expf/... under #![no_std].
+libm = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

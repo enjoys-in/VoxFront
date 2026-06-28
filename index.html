@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoIP DSP Playground · AI Voice Agent Preprocessing</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>VoIP DSP Playground</h1>
+        <p class="sub">Local audio preprocessing for AI voice agents — Rust → WebAssembly in an AudioWorklet.</p>
+      </div>
+    </header>
+
+    <!-- Sticky transport / A-B bar -->
+    <section class="transport panel">
+      <button id="startBtn" class="primary">Start microphone</button>
+
+      <label class="master" title="Bypass the whole DSP chain to A/B against the raw mic">
+        <input type="checkbox" id="preChk" checked />
+        <span>Preprocessing</span>
+      </label>
+
+      <div class="seg" role="group" aria-label="Listen">
+        <span class="seg-label">Listen</span>
+        <button class="seg-btn active" data-listen="off">Off</button>
+        <button class="seg-btn" data-listen="processed">Processed</button>
+        <button class="seg-btn" data-listen="raw">Raw mic</button>
+      </div>
+
+      <span class="spacer"></span>
+      <span class="hint inline">🎧 use headphones</span>
+      <span id="stateBadge" class="badge idle">idle</span>
+    </section>
+
+    <main>
+      <!-- Hero: live A/B scope + meters -->
+      <section class="panel hero">
+        <div class="scope-wrap">
+          <canvas id="scope" width="900" height="220"></canvas>
+          <div class="legend">
+            <span class="key raw">raw input</span>
+            <span class="key proc">processed</span>
+          </div>
+        </div>
+        <div class="readouts">
+          <div class="ro">
+            <span class="ro-label">Input</span>
+            <div class="meter"><div id="inBar" class="meter-fill raw"></div></div>
+            <span id="inVal" class="mono">0.000</span>
+          </div>
+          <div class="ro">
+            <span class="ro-label">Output</span>
+            <div class="meter"><div id="outBar" class="meter-fill"></div></div>
+            <span id="outVal" class="mono">0.000</span>
+          </div>
+          <div class="ro">
+            <span class="ro-label">Noise floor</span>
+            <div class="meter"><div id="noiseBar" class="meter-fill noise"></div></div>
+            <span id="noiseVal" class="mono">0.000</span>
+          </div>
+          <div class="chips">
+            <span class="chip"><span id="vadDot" class="dot"></span><span id="vadText">silent</span></span>
+            <span class="chip">AGC <span id="gainVal" class="mono">1.00×</span></span>
+            <span class="chip">Δ in→out <span id="deltaVal" class="mono">0.0 dB</span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Presets -->
+      <section class="panel presets">
+        <h2>Presets</h2>
+        <div id="presetRow" class="preset-row"></div>
+      </section>
+
+      <section class="grid">
+        <section class="panel feature" data-feature="aec">
+          <div class="feature-head">
+            <h2>Echo cancellation</h2>
+            <label class="toggle"><input type="checkbox" id="aecOn" /><span class="track"></span></label>
+          </div>
+          <label class="slider">Step μ <input type="range" id="aecMu" min="0.05" max="0.9" step="0.05" value="0.3" /><output id="aecMuVal">0.30</output></label>
+          <button id="farendBtn" class="ghost small">Play far-end test tone</button>
+          <p class="hint">Plays a tone through the speakers + AEC reference so you can watch the echo vanish.</p>
+        </section>
+
+        <section class="panel feature" data-feature="ns">
+          <div class="feature-head">
+            <h2>Noise suppression</h2>
+            <label class="toggle"><input type="checkbox" id="nsOn" checked /><span class="track"></span></label>
+          </div>
+          <label class="slider">Strength <input type="range" id="nsStrength" min="0" max="2" step="0.1" value="1" /><output id="nsStrengthVal">1.0</output></label>
+          <p class="hint">Spectral subtraction. Higher = more aggressive (watch for musical noise).</p>
+        </section>
+
+        <section class="panel feature" data-feature="agc">
+          <div class="feature-head">
+            <h2>Volume normalize (AGC)</h2>
+            <label class="toggle"><input type="checkbox" id="agcOn" checked /><span class="track"></span></label>
+          </div>
+          <label class="slider">Target RMS <input type="range" id="agcTarget" min="0.03" max="0.3" step="0.01" value="0.12" /><output id="agcTargetVal">0.12</output></label>
+        </section>
+
+        <section class="panel feature" data-feature="vad">
+          <div class="feature-head">
+            <h2>Voice activity detect</h2>
+            <label class="toggle"><input type="checkbox" id="vadOn" checked /><span class="track"></span></label>
+          </div>
+          <label class="slider">Sensitivity <input type="range" id="vadSens" min="0" max="1" step="0.05" value="0.5" /><output id="vadSensVal">0.50</output></label>
+          <label class="check"><input type="checkbox" id="vadGate" /><span>Gate output (mute non-speech)</span></label>
+        </section>
+
+        <section class="panel feature" data-feature="comp">
+          <div class="feature-head">
+            <h2>Compressor</h2>
+            <label class="toggle"><input type="checkbox" id="compOn" /><span class="track"></span></label>
+          </div>
+          <label class="slider">Threshold <input type="range" id="compThr" min="0.05" max="0.8" step="0.05" value="0.3" /><output id="compThrVal">0.30</output></label>
+          <label class="slider">Ratio <input type="range" id="compRatio" min="1" max="12" step="0.5" value="3" /><output id="compRatioVal">3.0</output></label>
+        </section>
+
+        <section class="panel feature" data-feature="fx">
+          <div class="feature-head">
+            <h2>Audio effects</h2>
+            <span class="mini-note">filter + echo</span>
+          </div>
+          <label class="check"><input type="checkbox" id="fxHp" checked /><span>Rumble high-pass (90 Hz)</span></label>
+          <label class="check"><input type="checkbox" id="fxEcho" /><span>Echo effect</span></label>
+          <label class="slider">Delay (ms) <input type="range" id="fxDelay" min="20" max="500" step="10" value="200" /><output id="fxDelayVal">200</output></label>
+          <label class="slider">Feedback <input type="range" id="fxFb" min="0" max="0.9" step="0.05" value="0.3" /><output id="fxFbVal">0.30</output></label>
+          <label class="slider">Mix <input type="range" id="fxMix" min="0" max="1" step="0.05" value="0.4" /><output id="fxMixVal">0.40</output></label>
+        </section>
+
+        <section class="panel">
+          <h2>DTMF detector</h2>
+          <div id="dtmfDisplay" class="dtmf-display mono">—</div>
+          <div class="dtmf-pad" id="dtmfPad"></div>
+          <button id="dtmfClear" class="ghost small">Clear</button>
+        </section>
+
+        <section class="panel">
+          <h2>Send to AI / SIP server</h2>
+          <label class="field">WebSocket URL (optional)
+            <input type="text" id="wsUrl" placeholder="wss://your-agent.example/audio" />
+          </label>
+          <button id="streamBtn" class="ghost">Start streaming (Opus)</button>
+          <div class="status-line">
+            <span>Link</span><span id="linkDot" class="dot"></span>
+            <span class="spacer"></span>
+            <span>Packets</span><span id="pktText" class="mono">0</span>
+            <span>Sent</span><span id="byteText" class="mono">0 B</span>
+          </div>
+          <p class="hint">For a real call, attach the processed MediaStream to an <code>RTCPeerConnection</code>.</p>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

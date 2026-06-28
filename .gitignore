@@ -1,0 +1,13 @@
+# Node
+node_modules/
+dist/
+
+# Rust
+rust-dsp/target/
+
+# Generated wasm (rebuilt by `npm run build:wasm`)
+public/voip_dsp.wasm
+
+# Editor / OS
+.DS_Store
+*.log
