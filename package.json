@@ -6,9 +6,10 @@
   "type": "module",
   "scripts": {
     "build:wasm": "node scripts/build-wasm.mjs",
-    "predev": "npm run build:wasm",
+    "build:vc": "node voice-changer/scripts/build-wasm.mjs",
+    "predev": "npm run build:wasm && npm run build:vc",
     "dev": "vite",
-    "prebuild": "npm run build:wasm",
+    "prebuild": "npm run build:wasm && npm run build:vc",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"

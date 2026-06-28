@@ -41,8 +41,26 @@ export interface VoiceChangerStatus {
 /** Built-in preset identifiers. */
 export type VoicePresetName =
   | "clean"
+  // female
   | "female"
+  | "female2"
+  | "female-18"
+  | "female-25"
+  | "female-30"
+  | "female-35"
+  | "old-lady"
+  // male
   | "male"
+  | "male2"
+  | "male-18"
+  | "male-25"
+  | "male-30"
+  | "male-35"
+  | "old-man"
+  // kids (gender-neutral)
+  | "child-5"
+  | "child-10"
+  // characters
   | "robot"
   | "alien"
   | "villain";

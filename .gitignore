@@ -6,8 +6,10 @@ dist/
 rust-dsp/target/
 **/target/
 
-# Generated wasm (rebuilt by `npm run build:wasm`)
+# Generated wasm (rebuilt by `npm run build:wasm` / `build:vc`)
 public/voip_dsp.wasm
+public/voice_changer.wasm
+public/worklet/voice-changer-processor.js
 
 # Editor / OS
 .DS_Store
