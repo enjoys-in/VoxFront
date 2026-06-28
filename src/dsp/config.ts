@@ -47,27 +47,111 @@ export interface Preset {
 }
 
 export const presets: Record<string, Preset> = {
-  clean: {
-    label: "Clean voice",
-    hint: "Everything on — balanced agent input",
+  studio: {
+    label: "Studio",
+    hint: "Treated, quiet room — natural, minimal processing",
     config: {
-      aec: { on: true, mu: 0.3 },
-      ns: { on: true, strength: 1.0 },
+      aec: { on: false, mu: 0.3 },
+      ns: { on: true, strength: 0.4 },
       agc: { on: true, target: 0.12 },
-      comp: { on: true, threshold: 0.3, ratio: 3.0, makeup: 1.2 },
+      comp: { on: false, threshold: 0.3, ratio: 3.0, makeup: 1.2 },
+      vad: { on: true, sensitivity: 0.4, gate: false },
+      fx: { hp: false, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  bedroom: {
+    label: "Bedroom",
+    hint: "Small soft room — light denoise, gentle echo control",
+    config: {
+      aec: { on: true, mu: 0.25 },
+      ns: { on: true, strength: 0.9 },
+      agc: { on: true, target: 0.12 },
+      comp: { on: false, threshold: 0.3, ratio: 3.0, makeup: 1.2 },
       vad: { on: true, sensitivity: 0.5, gate: false },
       fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
     },
   },
-  aggressive: {
-    label: "Aggressive denoise",
-    hint: "Heavy noise suppression for loud rooms",
+  livingRoom: {
+    label: "Living room",
+    hint: "Medium room with TV / ambient — balanced",
+    config: {
+      aec: { on: true, mu: 0.3 },
+      ns: { on: true, strength: 1.2 },
+      agc: { on: true, target: 0.13 },
+      comp: { on: true, threshold: 0.35, ratio: 2.5, makeup: 1.1 },
+      vad: { on: true, sensitivity: 0.5, gate: false },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  office: {
+    label: "Office",
+    hint: "AC hum, keyboard, colleagues — steady denoise",
+    config: {
+      aec: { on: true, mu: 0.3 },
+      ns: { on: true, strength: 1.4 },
+      agc: { on: true, target: 0.13 },
+      comp: { on: true, threshold: 0.3, ratio: 3.0, makeup: 1.2 },
+      vad: { on: true, sensitivity: 0.55, gate: false },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  openOffice: {
+    label: "Open office",
+    hint: "Background chatter — strong denoise + speech gate",
+    config: {
+      aec: { on: true, mu: 0.3 },
+      ns: { on: true, strength: 1.8 },
+      agc: { on: true, target: 0.14 },
+      comp: { on: true, threshold: 0.28, ratio: 3.5, makeup: 1.25 },
+      vad: { on: true, sensitivity: 0.65, gate: true },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  cafe: {
+    label: "Café / Restaurant",
+    hint: "Loud babble — max denoise, gated, compressed",
     config: {
       aec: { on: true, mu: 0.3 },
       ns: { on: true, strength: 2.0 },
-      agc: { on: true, target: 0.14 },
+      agc: { on: true, target: 0.15 },
       comp: { on: true, threshold: 0.25, ratio: 4.0, makeup: 1.3 },
       vad: { on: true, sensitivity: 0.7, gate: true },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  street: {
+    label: "Street / Outdoor",
+    hint: "Traffic & wind — heavy rumble cut + denoise",
+    config: {
+      aec: { on: false, mu: 0.3 },
+      ns: { on: true, strength: 2.0 },
+      agc: { on: true, target: 0.16 },
+      comp: { on: true, threshold: 0.22, ratio: 5.0, makeup: 1.4 },
+      vad: { on: true, sensitivity: 0.75, gate: true },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  car: {
+    label: "Car",
+    hint: "Engine / road rumble in an enclosed cabin",
+    config: {
+      aec: { on: true, mu: 0.3 },
+      ns: { on: true, strength: 1.6 },
+      agc: { on: true, target: 0.15 },
+      comp: { on: true, threshold: 0.28, ratio: 3.5, makeup: 1.25 },
+      vad: { on: true, sensitivity: 0.6, gate: false },
+      fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
+    },
+  },
+  hall: {
+    label: "Hall / Conference",
+    hint: "Reverberant space — aggressive echo cancellation",
+    config: {
+      aec: { on: true, mu: 0.5 },
+      ns: { on: true, strength: 1.0 },
+      agc: { on: true, target: 0.13 },
+      comp: { on: false, threshold: 0.3, ratio: 3.0, makeup: 1.2 },
+      vad: { on: true, sensitivity: 0.5, gate: false },
       fx: { hp: true, echo: false, delay: 9600, fb: 0.3, mix: 0.4 },
     },
   },

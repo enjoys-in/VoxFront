@@ -1,0 +1,50 @@
+{
+  "name": "@enjoys/voice-changer",
+  "version": "0.1.0",
+  "description": "Plug-and-play real-time browser voice changer (pitch / robot / alien / villain / male / female) — Rust DSP compiled to WebAssembly, run in an AudioWorklet, with a framework-agnostic engine and a React hook.",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "voice-changer",
+    "audio",
+    "dsp",
+    "webassembly",
+    "audioworklet",
+    "pitch-shift",
+    "react"
+  ],
+  "files": [
+    "ts",
+    "worklet",
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./ts/index.ts",
+      "import": "./ts/index.ts"
+    },
+    "./react": {
+      "types": "./ts/react.ts",
+      "import": "./ts/react.ts"
+    },
+    "./wasm": "./dist/voice_changer.wasm",
+    "./worklet": "./worklet/voice-changer-processor.js"
+  },
+  "scripts": {
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=17"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.6.3"
+  }
+}

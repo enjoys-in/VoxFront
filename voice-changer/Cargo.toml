@@ -1,0 +1,24 @@
+[package]
+name = "voice-changer"
+version = "0.1.0"
+edition = "2021"
+description = "Real-time voice-changer DSP core (pitch / formant-ish / ring-mod / drive) compiled to WebAssembly for an AudioWorklet"
+license = "MIT"
+
+[lib]
+# cdylib => a standalone .wasm exporting its own linear memory and the
+# `#[no_mangle] extern "C"` functions. No wasm-bindgen glue, so it can be
+# instantiated synchronously inside an AudioWorklet from raw bytes.
+name = "voice_changer"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Pure-Rust libm for sinf/cosf/tanhf/powf on wasm32-unknown-unknown.
+libm = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
