@@ -96,21 +96,25 @@ async function changeVoice(raw: MediaStream): Promise<MediaStream> {
   }
 }
 
-const proto = MediaDevices.prototype;
-const original = proto.getUserMedia;
+// MediaDevices only exists in secure contexts (https, localhost). On plain
+// http pages and some sandboxed frames there is no mic API to wrap.
+if (typeof MediaDevices !== "undefined") {
+  const proto = MediaDevices.prototype;
+  const original = proto.getUserMedia;
 
-proto.getUserMedia = async function (this: MediaDevices, constraints?: MediaStreamConstraints) {
-  const raw = await original.call(this, constraints);
-  if (!constraints?.audio || raw.getAudioTracks().length === 0) return raw;
-  // Settings normally arrive within a few ms; never block the page for long.
-  await Promise.race([gotSettings, new Promise((r) => setTimeout(r, 1000))]);
-  if (!settings?.enabled || !base) return raw;
-  try {
-    return await changeVoice(raw);
-  } catch (err) {
-    lastError = `Voice changer unavailable on this site: ${err instanceof Error ? err.message : err}`;
-    console.warn("[VoxFront]", lastError);
-    report();
-    return raw;
-  }
-};
+  proto.getUserMedia = async function (this: MediaDevices, constraints?: MediaStreamConstraints) {
+    const raw = await original.call(this, constraints);
+    if (!constraints?.audio || raw.getAudioTracks().length === 0) return raw;
+    // Settings normally arrive within a few ms; never block the page for long.
+    await Promise.race([gotSettings, new Promise((r) => setTimeout(r, 1000))]);
+    if (!settings?.enabled || !base) return raw;
+    try {
+      return await changeVoice(raw);
+    } catch (err) {
+      lastError = `Voice changer unavailable on this site: ${err instanceof Error ? err.message : err}`;
+      console.warn("[VoxFront]", lastError);
+      report();
+      return raw;
+    }
+  };
+}
