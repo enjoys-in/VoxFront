@@ -28,13 +28,13 @@ Microphone ─▶ WASM DSP ─┬─ Echo cancellation (custom NLMS)
 | Layer | File | Role |
 | --- | --- | --- |
 | DSP core (WASM) | [rust-dsp/src/lib.rs](rust-dsp/src/lib.rs) | Orchestration + exported C ABI |
-| Echo cancellation | [rust-dsp/src/aec.rs](rust-dsp/src/aec.rs) | NLMS adaptive filter + double-talk guard |
-| Noise suppression | [rust-dsp/src/ns.rs](rust-dsp/src/ns.rs) | STFT spectral subtraction (256-pt, 50% overlap) |
-| AGC + compressor | [rust-dsp/src/agc.rs](rust-dsp/src/agc.rs) | Volume normalize + dynamic range compression |
+| Echo cancellation | [rust-dsp/src/aec.rs](rust-dsp/src/aec.rs) | Frequency-domain block NLMS (~107 ms tail), two-filter double-talk handling |
+| Noise suppression | [rust-dsp/src/ns.rs](rust-dsp/src/ns.rs) | STFT decision-directed Wiener + residual-echo suppression (256-pt, 50% overlap) |
+| AGC + compressor | [rust-dsp/src/agc.rs](rust-dsp/src/agc.rs) | Volume normalize + dynamic range compression + output limiter |
 | VAD | [rust-dsp/src/vad.rs](rust-dsp/src/vad.rs) | Energy + zero-crossing with adaptive noise floor |
 | DTMF | [rust-dsp/src/dtmf.rs](rust-dsp/src/dtmf.rs) | Goertzel touch-tone detection |
-| Effects | [rust-dsp/src/effects.rs](rust-dsp/src/effects.rs) | Biquad high-pass + feedback delay |
-| FFT | [rust-dsp/src/fft.rs](rust-dsp/src/fft.rs) | Radix-2 complex FFT |
+| Effects | [rust-dsp/src/effects.rs](rust-dsp/src/effects.rs) | DC blocker, biquad high-pass + feedback delay |
+| FFT | [rust-dsp/src/fft.rs](rust-dsp/src/fft.rs) | Table-driven radix-2 FFT (two real signals per transform) |
 | Audio host | [public/worklet/dsp-processor.js](public/worklet/dsp-processor.js) | Instantiates wasm on the audio thread |
 | Engine | [src/audio/AudioEngine.ts](src/audio/AudioEngine.ts) | Mic capture, graph wiring, config/status |
 | Transport | [src/transport/SipTransport.ts](src/transport/SipTransport.ts) | Opus encode + WebSocket send (stub) |
@@ -104,17 +104,40 @@ Two paths to the backend (the **Send to AI / SIP server** panel):
 ## Signal chain (per 128-sample quantum)
 
 ```
-input ─▶ AEC ─▶ DTMF detect ─▶ noise suppression ─▶ VAD
-      ─▶ AGC ─▶ compressor ─▶ effects ─▶ VAD gate ─▶ output
+input ─▶ DC block ─▶ AEC ─▶ DTMF detect ─▶ noise + residual-echo suppression
+      ─▶ VAD ─▶ AGC ─▶ compressor ─▶ effects ─▶ VAD gate ─▶ limiter ─▶ output
 ```
 
 ## Notes & limitations
 
-- The AEC filter is 1024 taps (~21 ms at 48 kHz) — fine for short acoustic
-  paths; long, reverberant rooms need a longer filter and a partitioned
-  frequency-domain implementation.
-- Noise suppression is classic spectral subtraction with minimum-statistics
+- The AEC covers echo paths up to ~107 ms (5120 taps at 48 kHz). Systems with
+  more output+input latency than that need a bulk-delay estimator in front.
+- Noise suppression is a decision-directed Wiener filter with minimum-statistics
   noise tracking; it is intentionally lightweight, not a neural model.
 - The `MediaRecorder` transport produces a WebM/Opus container, which is meant to
   demonstrate the compress + transport stage, not as a drop-in RTP source. Use
   WebRTC for production real-time delivery.
+
+## Chrome extension — voice changer on any website
+
+[extension/](extension/) is a Manifest V3 extension that changes your voice on
+any site that uses the microphone (Google Meet, Discord, voice recorders, ...).
+It wraps `getUserMedia` in the page, routes the real mic through the
+voice-changer WASM worklet and hands the site the processed track. Everything
+runs locally; video tracks pass through untouched.
+
+```bash
+npm run build:ext   # builds the voice-changer wasm + bundles extension/dist
+```
+
+Then open `chrome://extensions`, enable **Developer mode**, click **Load
+unpacked** and pick `extension/dist`. Use the toolbar popup to switch it on/off,
+pick a preset (female, male, kids, heavy / giant / monster / demon, chipmunk,
+helium, radio, robot, ...) or fine-tune pitch, grit and volume — changes apply
+live to an ongoing call. If a site opened the mic before the extension was
+installed, reload that page.
+
+Browsers only expose the microphone on secure pages (`https://` and
+`localhost`), so the extension stays inactive on plain `http://` sites. On a
+site whose Content-Security-Policy forbids WebAssembly the extension falls
+back to the unmodified mic and shows the reason in the popup.

@@ -29,6 +29,7 @@ const deltaVal = el<HTMLSpanElement>("deltaVal");
 const vadDot = el<HTMLSpanElement>("vadDot");
 const vadText = el<HTMLSpanElement>("vadText");
 const gainVal = el<HTMLSpanElement>("gainVal");
+const erleVal = el<HTMLSpanElement>("erleVal");
 
 const presetRow = el<HTMLDivElement>("presetRow");
 const dtmfDisplay = el<HTMLDivElement>("dtmfDisplay");
@@ -85,6 +86,7 @@ function renderStatus(status: DspStatus): void {
   vadDot.className = `dot ${status.vad ? "on" : ""}`;
   vadText.textContent = status.vad ? "speech" : "silent";
   gainVal.textContent = `${status.gain.toFixed(2)}×`;
+  erleVal.textContent = status.erle > 0 ? `${status.erle.toFixed(1)} dB` : "—";
 }
 
 function resetMeters(): void {
@@ -97,6 +99,7 @@ function resetMeters(): void {
   vadDot.className = "dot";
   vadText.textContent = "silent";
   gainVal.textContent = "1.00×";
+  erleVal.textContent = "—";
   sctx.clearRect(0, 0, scope.width, scope.height);
 }
 
@@ -209,6 +212,7 @@ startBtn.addEventListener("click", async () => {
     await engine.stop();
     transport.stop();
     streamBtn.textContent = "Start streaming (Opus)";
+    farendBtn.textContent = "Play far-end test tone";
     return;
   }
   startBtn.disabled = true;
@@ -271,6 +275,7 @@ function applyPreset(key: string): void {
   if (!preset) return;
   engine.setConfig(preset.config);
   syncControls(preset.config);
+  pushDelay(); // re-derive the delay in samples for the actual sample rate
   highlightPreset(key);
 }
 
@@ -345,7 +350,8 @@ function syncControls(c: DspConfig): void {
   setSlider("compRatio", "compRatioVal", c.comp.ratio, 1);
   el<HTMLInputElement>("fxHp").checked = c.fx.hp;
   el<HTMLInputElement>("fxEcho").checked = c.fx.echo;
-  setSlider("fxDelay", "fxDelayVal", Math.round((c.fx.delay / sampleRate) * 1000), 0);
+  // Preset delays are authored in samples at 48 kHz.
+  setSlider("fxDelay", "fxDelayVal", Math.round((c.fx.delay / 48000) * 1000), 0);
   setSlider("fxFb", "fxFbVal", c.fx.fb, 2);
   setSlider("fxMix", "fxMixVal", c.fx.mix, 2);
 }

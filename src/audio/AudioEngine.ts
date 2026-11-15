@@ -29,7 +29,8 @@ export class AudioEngine {
   private rawAnalyserNode: AnalyserNode | null = null;
   private procAnalyserNode: AnalyserNode | null = null;
   private streamDest: MediaStreamAudioDestinationNode | null = null;
-  private referenceNode: AudioNode | null = null;
+  private referenceStream: MediaStream | null = null;
+  private refSource: MediaStreamAudioSourceNode | null = null;
   private farOsc: OscillatorNode | null = null;
   private farGain: GainNode | null = null;
   private config: DspConfig = structuredClone(defaultConfig);
@@ -105,7 +106,7 @@ export class AudioEngine {
       node.connect(this.procAnalyserNode);
 
       // optional far-end reference -> worklet input 1
-      if (this.referenceNode) this.referenceNode.connect(node, 0, 1);
+      this.connectReference();
 
       // worklet -> processed MediaStream (always pulls the graph so processing
       // runs even when the monitor is muted).
@@ -123,8 +124,9 @@ export class AudioEngine {
 
       this.cb.onState?.("running");
     } catch (err) {
-      this.cb.onState?.("error", err instanceof Error ? err.message : String(err));
+      // stop() reports "idle", so surface the error after it or it is overwritten.
       await this.stop();
+      this.cb.onState?.("error", err instanceof Error ? err.message : String(err));
       throw err;
     }
   }
@@ -183,7 +185,8 @@ export class AudioEngine {
     this.rawAnalyserNode?.disconnect();
     this.procAnalyserNode?.disconnect();
     this.streamDest?.disconnect();
-    this.referenceNode?.disconnect();
+    this.refSource?.disconnect();
+    this.refSource = null;
     this.micStream?.getTracks().forEach((t) => t.stop());
     if (this.ctx && this.ctx.state !== "closed") await this.ctx.close();
 
@@ -243,11 +246,22 @@ export class AudioEngine {
   }
 
   /**
-   * Provide a far-end / loudspeaker signal for echo cancellation. Call before
-   * {@link start}; the node is connected to the worklet's second input.
+   * Provide the far-end / loudspeaker audio (e.g. the remote call stream) for
+   * echo cancellation. Can be called before or after {@link start}; it is kept
+   * across restarts and wired into the worklet's second input.
    */
-  setReferenceNode(node: AudioNode | null): void {
-    this.referenceNode = node;
+  setReferenceStream(stream: MediaStream | null): void {
+    this.referenceStream = stream;
+    this.connectReference();
+  }
+
+  private connectReference(): void {
+    this.refSource?.disconnect();
+    this.refSource = null;
+    const stream = this.referenceStream;
+    if (!this.ctx || !this.node || !stream || stream.getAudioTracks().length === 0) return;
+    this.refSource = this.ctx.createMediaStreamSource(stream);
+    this.refSource.connect(this.node, 0, 1);
   }
 
   private onWorkletMessage(msg: unknown): void {
@@ -262,6 +276,7 @@ export class AudioEngine {
           rms: m.rms as number,
           noiseFloor: m.noiseFloor as number,
           gain: m.gain as number,
+          erle: (m.erle as number) ?? 0,
         });
         break;
       case "dtmf":

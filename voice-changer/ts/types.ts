@@ -61,6 +61,14 @@ export type VoicePresetName =
   | "child-5"
   | "girl-10"
   | "boy-10"
+  // heavy / fun
+  | "heavy"
+  | "giant"
+  | "monster"
+  | "demon"
+  | "chipmunk"
+  | "helium"
+  | "radio"
   // characters
   | "robot"
   | "alien"

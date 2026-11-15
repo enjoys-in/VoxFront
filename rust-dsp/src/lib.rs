@@ -7,8 +7,9 @@
 //! buffer plus the status getters.
 //!
 //! Signal chain per quantum:
-//!   input -> AEC -> DTMF detect -> noise suppression -> VAD -> AGC ->
-//!   compressor -> effects -> VAD gate -> output
+//!   input -> DC block -> AEC -> DTMF detect -> noise + residual-echo
+//!   suppression -> VAD -> AGC -> compressor -> effects -> VAD gate ->
+//!   limiter -> output
 
 mod aec;
 mod agc;
@@ -19,9 +20,10 @@ mod ns;
 mod vad;
 
 use aec::Aec;
-use agc::{Agc, Compressor};
+use agc::{Agc, Compressor, Limiter};
 use dtmf::Dtmf;
-use effects::Effects;
+use effects::{DcBlocker, Effects};
+use fft::Fft;
 use vad::Vad;
 
 /// AudioWorklet render quantum.
@@ -81,13 +83,14 @@ struct Dsp {
     output: [f32; HOP],
     reference: [f32; HOP],
     work: [f32; HOP],
-    aec: Aec,
+    fft: Fft,
+    dc: DcBlocker,
     ns: ns::Ns,
     agc: Agc,
     comp: Compressor,
+    limiter: Limiter,
     vad: Vad,
     dtmf: Dtmf,
-    fx: Effects,
     cfg: Config,
     bypass: bool,
     gate_gain: f32,
@@ -104,13 +107,14 @@ impl Dsp {
             output: [0.0; HOP],
             reference: [0.0; HOP],
             work: [0.0; HOP],
-            aec: Aec::new(),
+            fft: Fft::new(),
+            dc: DcBlocker::new(),
             ns: ns::Ns::new(),
             agc: Agc::new(),
             comp: Compressor::new(),
+            limiter: Limiter::new(),
             vad: Vad::new(),
             dtmf: Dtmf::new(),
-            fx: Effects::new(),
             cfg: Config::new(),
             bypass: false,
             gate_gain: 1.0,
@@ -132,8 +136,11 @@ impl Dsp {
             return;
         }
 
+        let big = unsafe { big() };
+        self.dc.process(&mut self.work);
+
         if self.cfg.aec_on {
-            self.aec.process(&mut self.work, &self.reference, self.cfg.aec_mu);
+            big.aec.process(&self.fft, &mut self.work, &self.reference, self.cfg.aec_mu);
         }
 
         // DTMF runs on the echo-cancelled but otherwise unmodified signal so the
@@ -143,8 +150,12 @@ impl Dsp {
             self.last_dtmf = key;
         }
 
-        if self.cfg.ns_on {
-            self.ns.process(&mut self.work, self.cfg.ns_strength);
+        // The spectral stage also removes residual echo, so it runs whenever
+        // either noise suppression or echo cancellation is enabled.
+        if self.cfg.ns_on || self.cfg.aec_on {
+            let strength = if self.cfg.ns_on { self.cfg.ns_strength } else { 0.0 };
+            let echo = if self.cfg.aec_on { Some(big.aec.echo()) } else { None };
+            self.ns.process(&self.fft, &mut self.work, strength, echo);
         }
 
         self.vad_active = if self.cfg.vad_on {
@@ -165,7 +176,7 @@ impl Dsp {
             );
         }
 
-        self.fx.process(
+        big.fx.process(
             &mut self.work,
             self.cfg.fx_hp,
             self.cfg.fx_echo,
@@ -174,17 +185,19 @@ impl Dsp {
             self.cfg.fx_mix,
         );
 
-        // Smoothly gate the output when VAD says there is no speech.
+        // Smoothly gate the output when VAD says there is no speech: open fast
+        // (~2 ms) so word onsets survive, close slowly (~40 ms) to avoid clicks.
         let target_gate = if self.cfg.vad_on && self.cfg.vad_gate && !self.vad_active {
             0.0
         } else {
             1.0
         };
         for i in 0..HOP {
-            let c = if target_gate < self.gate_gain { 0.2 } else { 0.05 };
+            let c = if target_gate > self.gate_gain { 0.01 } else { 0.0005 };
             self.gate_gain += c * (target_gate - self.gate_gain);
             self.output[i] = self.work[i] * self.gate_gain;
         }
+        self.limiter.process(&mut self.output);
 
         self.last_rms = ns::rms(&self.output);
     }
@@ -192,10 +205,26 @@ impl Dsp {
 
 static mut DSP: Dsp = Dsp::new();
 
+/// Large state (~220 KB: AEC filters + echo-effect delay line) that starts
+/// all-zero. Kept apart from `DSP`, whose non-zero defaults would otherwise
+/// force every byte of it into the .wasm file instead of .bss.
+struct Big {
+    aec: Aec,
+    fx: Effects,
+}
+
+static mut BIG: Big = Big { aec: Aec::new(), fx: Effects::new() };
+
 #[inline]
 #[allow(clippy::missing_safety_doc)]
 unsafe fn dsp() -> &'static mut Dsp {
     &mut *core::ptr::addr_of_mut!(DSP)
+}
+
+#[inline]
+#[allow(clippy::missing_safety_doc)]
+unsafe fn big() -> &'static mut Big {
+    &mut *core::ptr::addr_of_mut!(BIG)
 }
 
 // ----------------------------------------------------------------------------
@@ -207,8 +236,10 @@ pub extern "C" fn dsp_init(sample_rate: f32) {
     unsafe {
         let d = dsp();
         d.sample_rate = sample_rate;
+        d.fft.init();
+        d.ns.init();
         d.dtmf.init(sample_rate);
-        d.fx.init(sample_rate);
+        big().fx.init(sample_rate);
     }
 }
 
@@ -255,6 +286,15 @@ pub extern "C" fn dsp_get_noise_floor() -> f32 {
 #[no_mangle]
 pub extern "C" fn dsp_get_gain() -> f32 {
     unsafe { dsp().agc.current_gain() }
+}
+
+/// Echo return loss enhancement of the AEC in dB (0 when idle/disabled).
+#[no_mangle]
+pub extern "C" fn dsp_get_erle() -> f32 {
+    unsafe {
+        let d = dsp();
+        if d.cfg.aec_on && !d.bypass { big().aec.erle_db() } else { 0.0 }
+    }
 }
 
 /// Returns a freshly detected DTMF key index (0..15) once, then -1.

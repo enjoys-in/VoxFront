@@ -40,7 +40,7 @@ mkdirSync(publicDir, { recursive: true });
 
 if (which("wasm-opt")) {
   console.log("Optimizing with wasm-opt...");
-  run("wasm-opt", ["-O3", builtWasm, "-o", outWasm]);
+  run("wasm-opt", ["-O3", "--enable-simd", builtWasm, "-o", outWasm]);
 } else {
   copyFileSync(builtWasm, outWasm);
 }

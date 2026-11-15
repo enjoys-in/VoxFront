@@ -157,6 +157,56 @@ export const presets: Record<VoicePresetName, VoicePreset> = {
     config: voice({ pitch: 6, tone: { highpass: 180, lowpass: 10000 } }),
   },
 
+  // ---- Heavy / fun ----------------------------------------------------
+  heavy: {
+    label: "Heavy",
+    hint: "Very deep, heavy bass voice",
+    config: voice({ pitch: -8, tone: { highpass: 0, lowpass: 5000 }, gain: 1.15 }),
+  },
+  giant: {
+    label: "Giant",
+    hint: "Huge and booming, an octave down",
+    config: voice({ pitch: -12, drive: 0.1, tone: { highpass: 0, lowpass: 3800 }, gain: 1.25 }),
+  },
+  monster: {
+    label: "Monster",
+    hint: "Growling, gritty beast",
+    config: voice({
+      pitch: -11,
+      drive: 0.45,
+      ring: { hz: 25, mix: 0.3 },
+      tone: { highpass: 0, lowpass: 4000 },
+      gain: 1.15,
+    }),
+  },
+  demon: {
+    label: "Demon",
+    hint: "Deep, distorted and wavering",
+    config: voice({
+      pitch: -10,
+      drive: 0.6,
+      ring: { hz: 40, mix: 0.35 },
+      vibrato: { hz: 3, depth: 0.3 },
+      tone: { highpass: 0, lowpass: 3500 },
+      gain: 1.1,
+    }),
+  },
+  chipmunk: {
+    label: "Chipmunk",
+    hint: "Squeaky, an octave up",
+    config: voice({ pitch: 12, tone: { highpass: 300, lowpass: 0 } }),
+  },
+  helium: {
+    label: "Helium",
+    hint: "Balloon-voice high and thin",
+    config: voice({ pitch: 9, tone: { highpass: 250, lowpass: 0 } }),
+  },
+  radio: {
+    label: "Radio",
+    hint: "Walkie-talkie: narrow band, crunchy",
+    config: voice({ drive: 0.35, tone: { highpass: 500, lowpass: 3200 }, gain: 1.3 }),
+  },
+
   // ---- Characters -----------------------------------------------------
   robot: {
     label: "Robot",

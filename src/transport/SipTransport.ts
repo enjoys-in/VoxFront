@@ -53,13 +53,20 @@ export class SipTransport {
     this.chunks = 0;
     this.bytes = 0;
 
-    if (url) {
-      this.ws = new WebSocket(url);
-      this.ws.binaryType = "arraybuffer";
-      this.ws.onopen = () => this.emit();
-      this.ws.onclose = () => this.emit();
-      this.ws.onerror = () => this.emit();
+    // Chunks recorded before the socket opens are queued, never dropped: the
+    // first chunk carries the WebM/Ogg header the server needs to decode.
+    const ws = url ? new WebSocket(url) : null;
+    const pending: Blob[] = [];
+    if (ws) {
+      ws.binaryType = "arraybuffer";
+      ws.onopen = () => {
+        pending.splice(0).forEach((b) => ws.send(b));
+        this.emit();
+      };
+      ws.onclose = () => this.emit();
+      ws.onerror = () => this.emit();
     }
+    this.ws = ws;
 
     const mimeType = pickMimeType();
     const options: MediaRecorderOptions = { audioBitsPerSecond: 24_000 };
@@ -70,19 +77,21 @@ export class SipTransport {
       if (!e.data || e.data.size === 0) return;
       this.chunks += 1;
       this.bytes += e.data.size;
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-        e.data.arrayBuffer().then((buf) => this.ws?.send(buf)).catch(() => {});
-      }
+      // WebSocket.send(Blob) keeps chunk order (no async arrayBuffer() race).
+      if (ws?.readyState === WebSocket.OPEN) ws.send(e.data);
+      else if (ws?.readyState === WebSocket.CONNECTING) pending.push(e.data);
       this.emit();
     };
+    // Close the socket only after the recorder's final chunk has been sent.
+    this.recorder.onstop = () => ws?.close();
     this.recorder.start(timesliceMs);
     this.emit();
   }
 
   stop(): void {
-    if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop();
+    if (this.recorder && this.recorder.state !== "inactive") this.recorder.stop(); // onstop closes ws
+    else this.ws?.close();
     this.recorder = null;
-    this.ws?.close();
     this.ws = null;
     this.emit();
   }

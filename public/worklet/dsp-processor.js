@@ -112,6 +112,7 @@ class DspProcessor extends AudioWorkletProcessor {
         rms: this.exports.dsp_get_rms(),
         noiseFloor: this.exports.dsp_get_noise_floor(),
         gain: this.exports.dsp_get_gain(),
+        erle: this.exports.dsp_get_erle(), // dB of echo removed by the AEC
       });
     }
 

@@ -17,5 +17,5 @@
     "resolveJsonModule": true,
     "types": []
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "embed/voice-dsp/VoiceDSP.ts", "vite.config.ts"]
 }

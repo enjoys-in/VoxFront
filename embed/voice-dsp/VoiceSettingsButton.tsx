@@ -128,7 +128,12 @@ export function VoiceSettingsButton({
       <button
         aria-label="Voice settings"
         style={{ ...S.fab, background: accent }}
-        onClick={() => setOpen((o) => !o)}
+        onClick={() => {
+          // Re-sync in case the config was changed elsewhere while closed.
+          setCfg(dsp.getConfig());
+          setBypass(dsp.getBypass());
+          setOpen((o) => !o);
+        }}
       >
         {/* gear */}
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#04222f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

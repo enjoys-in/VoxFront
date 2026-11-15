@@ -83,6 +83,7 @@ impl Vc {
     fn process(&mut self) {
         // Disabled: pass the microphone through untouched.
         if !self.cfg.enabled {
+            self.pitch.feed(&self.input);
             self.output.copy_from_slice(&self.input);
             self.last_rms = rms(&self.output);
             return;
@@ -107,6 +108,8 @@ impl Vc {
         let vibrato_active = self.cfg.vib_hz > 0.0 && self.cfg.vib_depth > 0.0;
         if (ratio - 1.0).abs() > 1e-4 || vibrato_active {
             self.pitch.process(&mut self.output, ratio);
+        } else {
+            self.pitch.feed(&self.output);
         }
 
         if self.cfg.ring_mix > 0.0 && self.cfg.ring_hz > 0.0 {
@@ -155,7 +158,11 @@ unsafe fn vc() -> &'static mut Vc {
 
 #[no_mangle]
 pub extern "C" fn vc_init(sample_rate: f32) {
-    unsafe { vc().fs = sample_rate }
+    unsafe {
+        let v = vc();
+        v.fs = sample_rate;
+        v.pitch.init();
+    }
 }
 
 #[no_mangle]

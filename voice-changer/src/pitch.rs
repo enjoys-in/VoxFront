@@ -19,7 +19,8 @@ const WINDOW: f32 = 1024.0;
 pub struct Pitch {
     buf: [f32; BUF],
     write: usize,
-    phase: f32, // read-pointer offset in [0, WINDOW)
+    phase: f32,                       // read-pointer offset in [0, WINDOW)
+    win: [f32; WINDOW as usize],      // Hann crossfade table (no cosf per sample)
 }
 
 impl Pitch {
@@ -28,6 +29,14 @@ impl Pitch {
             buf: [0.0; BUF],
             write: 0,
             phase: 0.0,
+            win: [0.0; WINDOW as usize],
+        }
+    }
+
+    /// Build the crossfade table. Must run once before [`Pitch::process`].
+    pub fn init(&mut self) {
+        for (i, w) in self.win.iter_mut().enumerate() {
+            *w = 0.5 - 0.5 * cosf(2.0 * PI * i as f32 / WINDOW);
         }
     }
 
@@ -45,6 +54,15 @@ impl Pitch {
         let frac = p - i0 as f32;
         let i1 = if i0 + 1 >= BUF { 0 } else { i0 + 1 };
         self.buf[i0] * (1.0 - frac) + self.buf[i1] * frac
+    }
+
+    /// Record `block` without shifting it. Called while the shifter is bypassed
+    /// so re-enabling it never replays stale audio from the ring buffer.
+    pub fn feed(&mut self, block: &[f32]) {
+        for &s in block {
+            self.buf[self.write] = s;
+            self.write = (self.write + 1) % BUF;
+        }
     }
 
     /// Pitch-shift `block` in place by `ratio` (= 2^(semitones/12)).
@@ -67,8 +85,10 @@ impl Pitch {
 
             // Hann envelopes for the two taps sum to 1 at a half-window offset
             // (constant-overlap-add), so this is a unity-gain crossfade.
-            let w0 = 0.5 - 0.5 * cosf(2.0 * PI * r0 / WINDOW);
-            let w1 = 0.5 - 0.5 * cosf(2.0 * PI * r1 / WINDOW);
+            // min(): f32 wrap-around can round a pointer up to exactly WINDOW.
+            let last = WINDOW as usize - 1;
+            let w0 = self.win[(r0 as usize).min(last)];
+            let w1 = self.win[(r1 as usize).min(last)];
 
             *s = w0 * s0 + w1 * s1;
 
