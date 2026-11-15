@@ -1,0 +1,4 @@
+# WebAssembly SIMD. Supported by every current browser
+# (Chrome/Edge 91+, Firefox 89+, Safari 16.4+).
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "target-feature=+simd128"]

@@ -19,8 +19,9 @@ struct Biquad {
 }
 
 impl Biquad {
-    const fn identity() -> Self {
-        Biquad { b0: 1.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0, z1: 0.0, z2: 0.0 }
+    /// Zeroed until `high_pass` sets the coefficients (from `Effects::init`).
+    const fn zero() -> Self {
+        Biquad { b0: 0.0, b1: 0.0, b2: 0.0, a1: 0.0, a2: 0.0, z1: 0.0, z2: 0.0 }
     }
 
     fn high_pass(&mut self, fc: f32, q: f32, fs: f32) {
@@ -46,6 +47,28 @@ impl Biquad {
     }
 }
 
+/// One-pole DC blocker (~38 Hz at 48 kHz). Runs first so a mic DC offset
+/// can't bias the AEC, noise floor, VAD or AGC.
+pub struct DcBlocker {
+    x1: f32,
+    y1: f32,
+}
+
+impl DcBlocker {
+    pub const fn new() -> Self {
+        DcBlocker { x1: 0.0, y1: 0.0 }
+    }
+
+    pub fn process(&mut self, block: &mut [f32; HOP]) {
+        for s in block.iter_mut() {
+            let y = *s - self.x1 + 0.995 * self.y1;
+            self.x1 = *s;
+            self.y1 = y;
+            *s = y;
+        }
+    }
+}
+
 pub struct Effects {
     hp: Biquad,
     delay: [f32; DELAY_MAX],
@@ -53,9 +76,11 @@ pub struct Effects {
 }
 
 impl Effects {
+    /// All-zero initial state (lets the global live in .bss, not the .wasm
+    /// file). Call [`Effects::init`] before processing.
     pub const fn new() -> Self {
         Effects {
-            hp: Biquad::identity(),
+            hp: Biquad::zero(),
             delay: [0.0; DELAY_MAX],
             widx: 0,
         }

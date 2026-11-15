@@ -30,12 +30,13 @@ impl Ring {
 }
 
 /// Soft-clipping waveshaper. `drive` in [0, 1] maps to a tanh gain of 1..12,
-/// normalized so the output stays roughly in [-1, 1].
+/// normalized so the output stays roughly in [-1, 1]. The shaped signal is
+/// blended in by `drive` so small amounts don't cause a sudden level jump.
 pub fn waveshape(block: &mut [f32], drive: f32) {
     let k = 1.0 + drive * 11.0;
     let norm = tanhf(k);
     for s in block.iter_mut() {
-        *s = tanhf(k * *s) / norm;
+        *s += drive * (tanhf(k * *s) / norm - *s);
     }
 }
 

@@ -43,6 +43,33 @@ impl Agc {
     }
 }
 
+/// Output safety limiter: instant attack (never exceeds `CEILING`, so AGC,
+/// compressor makeup or the echo effect can't clip the outgoing stream) and a
+/// smooth ~40 ms release.
+pub struct Limiter {
+    gain: f32,
+}
+
+impl Limiter {
+    const CEILING: f32 = 0.95;
+    const RELEASE: f32 = 0.0005;
+
+    pub const fn new() -> Self {
+        Limiter { gain: 1.0 }
+    }
+
+    pub fn process(&mut self, block: &mut [f32; HOP]) {
+        for s in block.iter_mut() {
+            let a = s.abs();
+            self.gain += Self::RELEASE * (1.0 - self.gain);
+            if a * self.gain > Self::CEILING {
+                self.gain = Self::CEILING / a;
+            }
+            *s *= self.gain;
+        }
+    }
+}
+
 /// Feed-forward dynamic-range compressor with soft knee-free hard threshold,
 /// attack/release envelope and makeup gain. Operates per sample.
 pub struct Compressor {

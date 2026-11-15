@@ -90,19 +90,23 @@ impl Dtmf {
             low_pow[i] = Self::goertzel(window, self.coeff_low[i]);
             high_pow[i] = Self::goertzel(window, self.coeff_high[i]);
         }
-        // Reset the accumulator for the next block.
-        self.count = 0;
+        // Keep the samples past the window for the next block instead of dropping them.
+        self.buf.copy_within(self.n..self.count, 0);
+        self.count -= self.n;
 
         let (lo_idx, lo_val) = arg_max(&low_pow);
         let (hi_idx, hi_val) = arg_max(&high_pow);
 
-        // Energy in the two winning tones should dominate the block.
-        let tone_energy = lo_val + hi_val;
-        let dominant = tone_energy > 0.35 * total;
+        // Goertzel power of a sinusoid is ~N/2 times its time-domain energy, so
+        // scale by 2/N to compare like with like against the block energy.
+        let scale = 2.0 / (self.n as f32);
+        let (lo_e, hi_e) = (lo_val * scale, hi_val * scale);
+        // The two winning tones must carry most of the block's energy.
+        let dominant = lo_e + hi_e > 0.6 * total;
         // Twist: the two tones should be within ~8 dB (~6.3x) of each other.
-        let twist_ok = lo_val < hi_val * 8.0 && hi_val < lo_val * 8.0;
-        // Absolute floor so silence/noise never triggers.
-        let loud = tone_energy > 1e-3 * (self.n as f32);
+        let twist_ok = lo_e < hi_e * 8.0 && hi_e < lo_e * 8.0;
+        // Absolute floor (~-40 dBFS) so faint noise never triggers.
+        let loud = lo_e + hi_e > 1e-4 * (self.n as f32);
 
         let mut key = -1i32;
         if dominant && twist_ok && loud {

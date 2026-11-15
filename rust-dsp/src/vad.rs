@@ -48,7 +48,7 @@ impl Vad {
         let speech = energy_speech || unvoiced;
 
         if speech {
-            self.hang = 12; // ~ frames of hangover
+            self.hang = 75; // ~200 ms of hangover (128-sample frames at 48 kHz)
         } else if self.hang > 0 {
             self.hang -= 1;
         }

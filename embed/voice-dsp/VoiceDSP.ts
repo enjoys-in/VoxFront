@@ -35,6 +35,8 @@ export interface DspStatus {
   rms: number;
   noiseFloor: number;
   gain: number;
+  /** Echo removed by the AEC in dB (0 when AEC is off or idle). */
+  erle: number;
 }
 
 export const defaultConfig: DspConfig = {
@@ -111,13 +113,23 @@ export class VoiceDSP {
   /** Start processing `micStream`; resolves to the processed MediaStream. */
   async start(micStream: MediaStream): Promise<MediaStream> {
     if (this.node) return this.dest!.stream;
+    try {
+      return await this.build(micStream);
+    } catch (err) {
+      await this.destroy(); // don't leak the AudioContext on a failed start
+      throw err;
+    }
+  }
 
+  private async build(micStream: MediaStream): Promise<MediaStream> {
     const ctx = new AudioContext({ latencyHint: "interactive" });
     this.ctx = ctx;
     if (ctx.state === "suspended") await ctx.resume();
 
     await ctx.audioWorklet.addModule(this.workletUrl);
-    const wasmBytes = await (await fetch(this.wasmUrl)).arrayBuffer();
+    const res = await fetch(this.wasmUrl);
+    if (!res.ok) throw new Error(`Failed to load ${this.wasmUrl}: HTTP ${res.status}`);
+    const wasmBytes = await res.arrayBuffer();
 
     const node = new AudioWorkletNode(ctx, "dsp-processor", {
       numberOfInputs: 2,
@@ -221,6 +233,7 @@ export class VoiceDSP {
         rms: m.rms as number,
         noiseFloor: m.noiseFloor as number,
         gain: m.gain as number,
+        erle: (m.erle as number) ?? 0,
       };
       this.listeners.status.forEach((cb) => cb(s));
     } else if (m.type === "dtmf") {

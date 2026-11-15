@@ -50,7 +50,7 @@ export function mergeConfig(
       Object.assign(out[key as "ring" | "vibrato" | "tone"], value);
     } else {
       // Primitive field (enabled / pitch / drive / mix / gain).
-      (out as Record<string, unknown>)[key] = value;
+      (out as unknown as Record<string, unknown>)[key] = value;
     }
   }
   return out;
@@ -99,13 +99,23 @@ export class VoiceChanger {
   /** Start processing `micStream`; resolves to the processed MediaStream. */
   async start(micStream: MediaStream): Promise<MediaStream> {
     if (this.node) return this.dest!.stream;
+    try {
+      return await this.build(micStream);
+    } catch (err) {
+      await this.destroy(); // don't leak the AudioContext on a failed start
+      throw err;
+    }
+  }
 
+  private async build(micStream: MediaStream): Promise<MediaStream> {
     const ctx = new AudioContext({ latencyHint: "interactive" });
     this.ctx = ctx;
     if (ctx.state === "suspended") await ctx.resume();
 
     await ctx.audioWorklet.addModule(this.workletUrl);
-    const wasmBytes = await (await fetch(this.wasmUrl)).arrayBuffer();
+    const res = await fetch(this.wasmUrl);
+    if (!res.ok) throw new Error(`Failed to load ${this.wasmUrl}: HTTP ${res.status}`);
+    const wasmBytes = await res.arrayBuffer();
 
     const node = new AudioWorkletNode(ctx, "voice-changer-processor", {
       numberOfInputs: 1,

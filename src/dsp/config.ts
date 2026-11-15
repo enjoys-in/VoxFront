@@ -35,6 +35,8 @@ export interface DspStatus {
   rms: number;
   noiseFloor: number;
   gain: number;
+  /** Echo removed by the AEC in dB (0 when AEC is off or idle). */
+  erle: number;
 }
 
 /** Which signal the local monitor plays, for A/B comparison. */

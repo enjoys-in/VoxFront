@@ -28,13 +28,13 @@ Microphone ─▶ WASM DSP ─┬─ Echo cancellation (custom NLMS)
 | Layer | File | Role |
 | --- | --- | --- |
 | DSP core (WASM) | [rust-dsp/src/lib.rs](rust-dsp/src/lib.rs) | Orchestration + exported C ABI |
-| Echo cancellation | [rust-dsp/src/aec.rs](rust-dsp/src/aec.rs) | NLMS adaptive filter + double-talk guard |
-| Noise suppression | [rust-dsp/src/ns.rs](rust-dsp/src/ns.rs) | STFT spectral subtraction (256-pt, 50% overlap) |
-| AGC + compressor | [rust-dsp/src/agc.rs](rust-dsp/src/agc.rs) | Volume normalize + dynamic range compression |
+| Echo cancellation | [rust-dsp/src/aec.rs](rust-dsp/src/aec.rs) | Frequency-domain block NLMS (~107 ms tail), two-filter double-talk handling |
+| Noise suppression | [rust-dsp/src/ns.rs](rust-dsp/src/ns.rs) | STFT decision-directed Wiener + residual-echo suppression (256-pt, 50% overlap) |
+| AGC + compressor | [rust-dsp/src/agc.rs](rust-dsp/src/agc.rs) | Volume normalize + dynamic range compression + output limiter |
 | VAD | [rust-dsp/src/vad.rs](rust-dsp/src/vad.rs) | Energy + zero-crossing with adaptive noise floor |
 | DTMF | [rust-dsp/src/dtmf.rs](rust-dsp/src/dtmf.rs) | Goertzel touch-tone detection |
-| Effects | [rust-dsp/src/effects.rs](rust-dsp/src/effects.rs) | Biquad high-pass + feedback delay |
-| FFT | [rust-dsp/src/fft.rs](rust-dsp/src/fft.rs) | Radix-2 complex FFT |
+| Effects | [rust-dsp/src/effects.rs](rust-dsp/src/effects.rs) | DC blocker, biquad high-pass + feedback delay |
+| FFT | [rust-dsp/src/fft.rs](rust-dsp/src/fft.rs) | Table-driven radix-2 FFT (two real signals per transform) |
 | Audio host | [public/worklet/dsp-processor.js](public/worklet/dsp-processor.js) | Instantiates wasm on the audio thread |
 | Engine | [src/audio/AudioEngine.ts](src/audio/AudioEngine.ts) | Mic capture, graph wiring, config/status |
 | Transport | [src/transport/SipTransport.ts](src/transport/SipTransport.ts) | Opus encode + WebSocket send (stub) |
