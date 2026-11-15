@@ -104,17 +104,38 @@ Two paths to the backend (the **Send to AI / SIP server** panel):
 ## Signal chain (per 128-sample quantum)
 
 ```
-input ─▶ AEC ─▶ DTMF detect ─▶ noise suppression ─▶ VAD
-      ─▶ AGC ─▶ compressor ─▶ effects ─▶ VAD gate ─▶ output
+input ─▶ DC block ─▶ AEC ─▶ DTMF detect ─▶ noise + residual-echo suppression
+      ─▶ VAD ─▶ AGC ─▶ compressor ─▶ effects ─▶ VAD gate ─▶ limiter ─▶ output
 ```
 
 ## Notes & limitations
 
-- The AEC filter is 1024 taps (~21 ms at 48 kHz) — fine for short acoustic
-  paths; long, reverberant rooms need a longer filter and a partitioned
-  frequency-domain implementation.
-- Noise suppression is classic spectral subtraction with minimum-statistics
+- The AEC covers echo paths up to ~107 ms (5120 taps at 48 kHz). Systems with
+  more output+input latency than that need a bulk-delay estimator in front.
+- Noise suppression is a decision-directed Wiener filter with minimum-statistics
   noise tracking; it is intentionally lightweight, not a neural model.
 - The `MediaRecorder` transport produces a WebM/Opus container, which is meant to
   demonstrate the compress + transport stage, not as a drop-in RTP source. Use
   WebRTC for production real-time delivery.
+
+## Chrome extension — voice changer on any website
+
+[extension/](extension/) is a Manifest V3 extension that changes your voice on
+any site that uses the microphone (Google Meet, Discord, voice recorders, ...).
+It wraps `getUserMedia` in the page, routes the real mic through the
+voice-changer WASM worklet and hands the site the processed track. Everything
+runs locally; video tracks pass through untouched.
+
+```bash
+npm run build:ext   # builds the voice-changer wasm + bundles extension/dist
+```
+
+Then open `chrome://extensions`, enable **Developer mode**, click **Load
+unpacked** and pick `extension/dist`. Use the toolbar popup to switch it on/off,
+pick a preset (female, male, kids, heavy / giant / monster / demon, chipmunk,
+helium, radio, robot, ...) or fine-tune pitch, grit and volume — changes apply
+live to an ongoing call. If a site opened the mic before the extension was
+installed, reload that page.
+
+On a site whose Content-Security-Policy forbids WebAssembly the extension falls
+back to the unmodified mic and shows the reason in the popup.

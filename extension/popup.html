@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>VoxFront Voice Changer</title>
+    <style>
+      :root { --bg: #11161d; --panel: #1a212b; --line: #2a3442; --text: #e6edf3; --muted: #8693a5; --accent: #4cc2ff; --live: #3fb950; --err: #f0883e; }
+      * { box-sizing: border-box; }
+      body { width: 360px; margin: 0; padding: 14px; background: var(--bg); color: var(--text); font: 13px/1.4 system-ui, sans-serif; }
+      header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+      h1 { font-size: 15px; margin: 0; }
+      h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 12px 0 6px; }
+      .status { padding: 8px 10px; border-radius: 8px; background: var(--panel); color: var(--muted); font-size: 12px; }
+      .status.live { color: var(--live); }
+      .status.err { color: var(--err); }
+      .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+      button { padding: 7px 4px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; font: inherit; font-size: 12px; }
+      button:hover { border-color: var(--accent); }
+      button.active { background: var(--accent); border-color: var(--accent); color: #04222f; font-weight: 600; }
+      #sliders label { display: grid; grid-template-columns: 56px 1fr 48px; align-items: center; gap: 8px; margin: 6px 0; }
+      #sliders input { accent-color: var(--accent); }
+      #sliders output { text-align: right; color: var(--accent); font-variant-numeric: tabular-nums; }
+      .switch { display: flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+      .switch input { width: 32px; height: 18px; accent-color: var(--live); }
+      footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; color: var(--muted); font-size: 11px; }
+      body.off #groups, body.off #sliders { opacity: .4; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🎙️ VoxFront Voice Changer</h1>
+      <label class="switch"><input type="checkbox" id="enabled" /> On</label>
+    </header>
+    <div id="status" class="status">…</div>
+    <div id="groups"></div>
+    <h2>Fine-tune</h2>
+    <div id="sliders"></div>
+    <footer>
+      <span>Changes apply live to active calls.</span>
+      <button id="reset">Reset</button>
+    </footer>
+    <script src="popup.js"></script>
+  </body>
+</html>
