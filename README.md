@@ -137,5 +137,7 @@ helium, radio, robot, ...) or fine-tune pitch, grit and volume — changes apply
 live to an ongoing call. If a site opened the mic before the extension was
 installed, reload that page.
 
-On a site whose Content-Security-Policy forbids WebAssembly the extension falls
+Browsers only expose the microphone on secure pages (`https://` and
+`localhost`), so the extension stays inactive on plain `http://` sites. On a
+site whose Content-Security-Policy forbids WebAssembly the extension falls
 back to the unmodified mic and shows the reason in the popup.
